@@ -153,3 +153,114 @@ inspect(head(reglas, 10))
 
 
 inspect(head(reglas, 10))
+---------------------------------------------------------------------------------
+  # Verificar los datos cargados
+  View(data)
+summary(data) 
+
+
+# Reemplazar NA con 0
+data[is.na(data)] <- 0
+
+# Convertir variables categóricas a factores
+data[] <- lapply(data, function(x) {
+  if (is.character(x)) x <- as.factor(x)
+  return(x)
+})
+
+# Convertir a transacciones
+data_trans <- as(data, "transactions")
+
+# Verificar las transacciones
+summary(data_trans)
+inspect(data_trans[1:5])  # Ver las primeras 5 transacciones
+
+
+
+# Aplicar FP-Growth para encontrar patrones frecuentes
+patrones_frecuentes <- eclat(data_trans, parameter = list(supp = 0.05, maxlen = 3))
+
+# Inspeccionar patrones frecuentes
+inspect(head(sort(patrones_frecuentes, by = "support"), 10))
+
+
+# Generar reglas de asociación a partir de los patrones frecuentes
+reglas <- ruleInduction(patrones_frecuentes, data_trans, confidence = 0.3)
+
+# Inspeccionar las reglas
+inspect(head(sort(reglas, by = "lift"), 10))
+
+
+# Visualización básica de reglas
+plot(reglas)
+
+# Visualización agrupada
+plot(reglas, method = "grouped")
+
+# Gráfica de red (network graph)
+plot(reglas, method = "graph", control = list(type = "items"))
+
+
+--------------------------------------------------------------------------------------------------------------
+  
+  install.packages("ggplot2")      
+install.packages("factoextra")  
+install.packages("cluster")      
+
+library(ggplot2)
+library(factoextra)
+library(cluster)
+
+library(readxl)
+file_path <- "C:/Users/Mario CIfuentes/Downloads/personas.xlsx"
+data <- read_excel(file_path)
+
+
+data <- data[, !(names(data) %in% c("dominio", "id", "hogar_num"))]
+
+
+data[] <- lapply(data, function(x) {
+  if (is.factor(x) || is.character(x)) {
+    x <- as.numeric(as.factor(x))
+  }
+  return(x)
+})
+
+
+data[is.na(data)] <- 0 
+
+data_scaled <- scale(data)
+
+
+fviz_nbclust(data_scaled, kmeans, method = "silhouette") +
+  labs(title = "Método de la silueta para determinar K", x = "Número de clústeres (K)", y = "Ancho promedio de silueta")
+
+
+k <- 3
+set.seed(123) 
+kmeans_result <- kmeans(data_scaled, centers = k, nstart = 25)
+
+print(kmeans_result$centers)  
+print(kmeans_result$cluster)  
+
+
+fviz_cluster(kmeans_result, data = data_scaled, geom = "point", ellipse.type = "euclid") +
+  labs(title = "Visualización de Clústeres (K-Means)", x = "Componente Principal 1", y = "Componente Principal 2")
+
+
+pairs(data_scaled, col = kmeans_result$cluster, main = "Gráfico de Pares por Clúster")
+
+
+data$cluster <- kmeans_result$cluster
+
+aggregate(. ~ cluster, data = data, mean)
+
+
+ggplot(data, aes(x = as.factor(cluster), y = P03A02, fill = as.factor(cluster))) +
+  geom_boxplot() +
+  labs(title = "Distribución de Género por Clúster", x = "Clúster", y = "P03A02 (Género)") +
+  theme_minimal()
+
+
+
+
